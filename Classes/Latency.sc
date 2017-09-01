@@ -11,7 +11,7 @@ Latency {
 		Class.initClassTree(OSCFunc);
 
 		// register to receive latency values
-		resp = OSCFunc({ arg time,responder,msg;
+		resp = OSCFunc({ arg msg;
 			var which = msg[2], exactTime = msg[3], delta;
 
 			if ( verbose ) { msg.postln; };
