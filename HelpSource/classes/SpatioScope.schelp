@@ -1,0 +1,207 @@
+TITLE:: SpatioScope
+summary:: monitor volume levels on multiple speakers
+categories:: GUI>Views
+related:: Classes/Server, Classes/Stethoscope
+
+
+DESCRIPTION::
+
+SpatioScope has a layout of speaker positions in 2D space,
+and shows the volume levels at each speaker's location.
+
+code::
+s.boot;
+	// quick first example:
+z = SpatioScope.new;	// default is 4 speakers
+
+	// 4 chans of sound
+{ LFDNoise3.ar([2, 3, 5, 8] * 1000) * LFNoise2.kr([5, 8, 13, 21] * 0.1).max(0); }.play;
+
+	// SpatioScopes survive cmd-period
+thisProcess.stop;
+
+{ PanAz.ar(4, ClipNoise.ar, LFSaw.kr(SinOsc.ar(0.03) * 1), 0.1) }.play;
+
+	// stop and start by hand
+z.stop;
+z.start;
+z.gui;
+// hide also stops it
+z.hide;
+// show also starts it
+z.show;
+
+// offset channels - listen to out channels 4-7
+z.offset_(4);
+
+
+// play something on these to check
+{ PanAz.ar(4, ClipNoise.ar, LFSaw.kr(SinOsc.ar(0.03) * 1), 0.1) }.play(outbus: 4);
+
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+
+ARGUMENT:: locations
+locations in space of [-1, 1] for x and y
+
+ARGUMENT:: server
+which server to watch
+
+ARGUMENT:: parent
+which window or view to show the spatioScope on
+
+ARGUMENT:: bounds
+view bounds for the spatioScope
+
+code::
+	// supply locations by hand - 1@1 is left bottom.
+z = SpatioScope([ -0.5 @ -0.7, 0.5 @ -0.4, 0.8 @ 0.8, -0.5 @ 0.5, 0@0 ]);
+::
+
+
+METHOD:: grid
+create a spatioScope with a grid of locations
+
+ARGUMENT:: numx
+number of locations per row
+
+ARGUMENT:: numy
+number of locations per column
+code::
+z = SpatioScope.grid(4,6);
+::
+
+METHOD:: gridPos
+create a grid of locations to use in a spatioScope
+code::
+SpatioScope.gridPos(2, 4).printAll;
+SpatioScope.gridPos(4, 6).printAll;
+::
+
+
+METHOD:: ring
+create a spatioScope with a ring of locations
+ARGUMENT:: num
+number of locations
+ARGUMENT:: radius
+radius of ring
+ARGUMENT:: angleOffset
+clockwise angle offset for location 1: 0 is right, 0.5pi is bottom, etc.
+
+code::
+z = SpatioScope.ring(5);	// 1 is right
+z = SpatioScope.ring(8);	// more speakers
+z = SpatioScope.ring(8, 0.8);	// ring radius
+z = SpatioScope.ring(5, 0.5, 0.5pi);	// radius, rotate location clockwise -> bottom
+z = SpatioScope.ring(6, 0.5, pi);	// radius, rotate location clockwise -> left
+z = SpatioScope.ring(7, 0.5, 1.5pi);	// radius, rotate location clockwise -> top
+
+	// a ring + e.g. subwoofer in center
+z = SpatioScope(SpatioScope.ringPos(6, 0.8, pi) ++ [0@0]);
+
+::
+
+
+METHOD:: ringPos
+create an array of locations that form a ring
+code::
+SpatioScope.ringPos(5);
+SpatioScope.ringPos(8);
+::
+
+METHOD:: rings
+create a spatioScope with locations that form concentric rings
+
+ARGUMENT:: nums
+number of speakers in each ring
+ARGUMENT:: radii
+the radii of each ring (nil distributes the radii between 0 and 1)
+ARGUMENT:: angleOffsets
+the angle offsets for each ring; if a single value, it applies to all rings.
+
+
+z = SpatioScope.rings([8, 4]);	// 2 rings, outer ring is lower channels
+
+z = SpatioScope.rings([8, 4], nil, -0.5pi);	// 1 on top
+z = SpatioScope.rings([8, 4], [0.4, 0.75]);	// low chan numbers inside
+z = SpatioScope.rings([12, 8, 4], nil, -0.5pi); // 3 rings
+
+	// roughly the angle offsets for IEM CUBE
+z = SpatioScope.rings([12, 8, 4], nil, (-0.5 + [0, 0.125, 0.25]) * pi);
+
+	// roughly the Animax Dome setup in Bonn
+z = SpatioScope.rings([16, 12, 8, 4], nil, (-0.5 + [0.0625, 0.083, 0.125, 0.25]) * pi);
+
+	// test with several sources
+{ { Ringz.ar(Dust2.ar(5), exprand(300, 10000), exprand(0.03, 0.1)) }.dup(z.numChannels) }.play;
+
+
+INSTANCEMETHODS::
+
+private:: init, krListen, arListen, showLocs, updateViews
+
+METHOD:: locations
+get the locations
+
+METHOD:: numChannels
+the number of adjacent busses to listen to. this is inferred from
+the number of locations.
+
+METHOD:: offset
+the bus channel from which to start listening
+(see examples on top)
+
+METHOD:: rate
+the rate and bus type to listen to: one of [\audio, \control]
+
+METHOD:: maxBusNum
+get the maximum valid bus number for offset
+
+METHOD:: gui
+
+METHOD:: start, stop
+start and stop the spatioScope
+
+METHOD:: show, hide
+show and hide the spatioScope
+
+METHOD:: magnify
+set the magnification value
+
+METHOD:: amps
+the current amps measured
+
+METHOD:: redLevel
+the level above which the meter turns red
+
+METHOD:: server, skipjack, proxy, resp
+internal instance variables
+
+METHOD:: parent, bounds
+parent view or window of the spatioScope, and its initial bounds
+
+METHOD:: startBtn, stopBtn, ampViews, magSlider
+gui variables
+
+METHOD:: background, foreground
+the background and foreground colors of the spatioScope view
+
+EXAMPLES::
+
+code::
+
+// internal variables
+
+z.locations	// knows its locations
+z.server		// and its server
+z.numChannels	// inferred from number of locations
+z.offset		// zero by default, can be set so that outputs to watch begin at higher channels
+z.proxy		// a proxy does the amp watching
+z.resp		// a respondernode listen for the incoming amp values
+z.skipjack	// a skipjack restarts the spatioscope after thisProcess.stop
+z.parent		// its view
+::
+
