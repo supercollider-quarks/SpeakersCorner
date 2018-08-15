@@ -3,7 +3,8 @@ SpatioScope {
 	var <locations, <server,  <bounds, <>background, <>foreground;
 	var <numChannels, <offset = 0;
 	var <proxy, <resp, <skipjack;
-	var <parent, <startBtn, <stopBtn, <ampViews, <magSlider, <>redLevel=0.95, <>magnify=1;
+	var <parent, <startBtn, <stopBtn, <ampContainer, <ampViews, <magSlider;
+	var <lastAmps, <>redLevel=0.95, <>magnify=1;
 
 	var <rate;
 
@@ -29,18 +30,19 @@ SpatioScope {
 		rate = \audio;
 
 		resp.remove;
-		resp = OSCresponderNode(server.addr, '/c_set', { arg time, r, msg; 
+		resp = OSCFunc({ arg msg;
 			var amps;
 			// check if this reply message is for this spatioscope
-			if ( msg[1] == this.proxy.index ){
-				amps = msg.copyToEnd(1).clump(2).flop[1];
-				{  this.amps_(amps * (magnify ? 1)); }.defer;
+			if ( msg[[1, 2]] == [proxy.bus.index, this.numChannels] ){
+				lastAmps = msg.drop(3);
+				// "got bus values with % values: %\n".postf(lastAmps.size, lastAmps);
+				{  this.amps_(lastAmps * (magnify ? 1)); }.defer;
 			};
-		}); 
-		
-		skipjack = SkipJack( 
-			{ proxy.wakeUp; this.updateViews; }, 
-			0.2, 
+		}, '/c_setn', server.addr).permanent_(true);
+
+		skipjack = SkipJack(
+			{ proxy.wakeUp; this.updateViews; },
+			0.1,
 			{ parent.isClosed; },
 			this.class.name,
 			autostart: false
@@ -195,7 +197,8 @@ SpatioScope {
 		if (parent.isClosed.not) {
 			startBtn.value_(isOn);
 			stopBtn.value_(1 - isOn);
-			server.listSendMsg(["/c_get"] ++ ((_ + proxy.index) ! proxy.numChannels));
+			magSlider.value_(magnify);
+			server.listSendMsg([\c_getn, proxy.index, this.numChannels]);
 		};
 	}
 
