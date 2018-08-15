@@ -96,16 +96,25 @@ SpatioScope {
 		this.showLocs;
 		this.stop.start;
 	}
-	
-	showLocs { 
-		var ampCont = CompositeView(parent, bounds).background_(Color.clear);
-		var center = bounds.center; 
-		var size = bounds.center.x * 0.2; 
-		
-		ampViews = locations.collect { |point, i| 
-			var left = point.x + 1 - 0.125 * center.x; 
-			var top = point.y + 1 - 0.125 * center.y; 
-			StaticText(ampCont, Rect(left, top, size, size))
+
+	show { |start = true|
+		if (parent.isClosed) { this.gui } { parent.front };
+		if (start) { this.start };
+	}
+	hide { |stop = true|
+		if (parent.isClosed.not) { parent.minimize };
+		if (stop) { this.stop };
+	}
+
+	showLocs {
+		var center = bounds.center;
+		var size = bounds.center.x * 0.1;
+		ampContainer = CompositeView(parent, bounds).background_(Color.clear);
+
+		ampViews = locations.collect { |point, i|
+			var left = point.x + 1 * center.x;
+			var top = point.y + 1 * center.y;
+			StaticText(ampContainer, Rect.aboutPoint(left@top, size, size))
 			.string_((i + 1).asString).align_(\center)
 				.stringColor_(foreground)
 			.background_(Color.black);
