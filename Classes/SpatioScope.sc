@@ -8,9 +8,9 @@ SpatioScope {
 	var <rate;
 
 	*new { arg locations, server, parent, bounds;
-		locations = locations ?? { [(-0.5 @ -0.5), (0.5 @ -0.5), (0.5@0.5), (-0.5@0.5) ] }; 
-		server = server ? Server.default; 
-		
+		locations = locations ?? { SpatioScope.gridPos(2, 2) };
+		server = server ? Server.default;
+
 		^super.newCopyArgs(locations, server)
 			.init(bounds)
 			.gui(parent)
