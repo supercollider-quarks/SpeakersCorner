@@ -2,9 +2,11 @@ SpatioScope {
 
 	var <locations, <server,  <bounds, <>background, <>foreground;
 	var <numChannels, <offset = 0;
-	var <proxy, <resp, <skipjack;
-	var <parent, <startBtn, <stopBtn, <ampContainer, <ampViews, <magSlider;
-	var <lastAmps, <>redLevel=0.95, <>magnify=1;
+	var <proxy, <resp, <skipjack, <lastAmps;
+	var <parent, <parentView, <topZone, <startBtn, <stopBtn, <magSlider;
+	var <ampViews, <>ampAlpha = 0.6, <>magnify=1, <>redLevel=0.95;
+	var <redCol;
+	var <>clickAction, <defaultMouseDownAction;
 
 	var <rate;
 
@@ -47,6 +49,14 @@ SpatioScope {
 			this.class.name,
 			autostart: false
 		);
+
+		defaultMouseDownAction = { |view, x, y, mod|
+			var indices = this.indicesFor(x, y);
+			clickAction.value(indices, x, y, mod);
+		};
+		clickAction = { |indices, x, y, mod|
+			"clicked in ampView(s) at % at pos x: % y: % with mod key: %\n".postf(indices, x, y, mod)
+		};
 	}
 
 	maxBusNum {
@@ -68,26 +78,32 @@ SpatioScope {
 
 	gui { |argParent|
 		var butWidth = 38;
+
 		background = background ?? { Color(0, 0, 0.15) }; // dark blue
 		foreground = foreground ?? { Color(0.5, 0.5, 1.0) }; // light blue
 
 		parent = argParent ?? {
 			Window(this.class.name, bounds.moveBy(200, 200).resizeBy(10, 30)).front;
 		};
-		parent.view.background_(background);
-		parent.addFlowLayout;
+		parentView = parent.asView;
+		parentView.background_(background);
+
+		topZone = CompositeView(parent, Rect(0,0, bounds.width, 30));
+		topZone.addFlowLayout;
 
 		#startBtn, stopBtn = [ \start, \stop ].collect { |name, i|
-			Button(parent, Rect(i * (butWidth + 2) + 2, 2, butWidth, 20))
-				.states_([[name, Color.white, Color.clear],
-					[name, Color.white, Color(0,0,0.8)]])
-				.action_({ this.perform(name); });
+			Button(topZone, Rect(i * (butWidth + 2) + 2, 2, butWidth, 20))
+			.states_([
+				[name, Color.white, Color.clear],
+				[name, Color.white, Color.blue(1.0)]
+			])
+			.action_({ this.perform(name); });
 		};
 
-		magSlider = EZSlider(parent,
-			(bounds.width - (butWidth * 2) - 10) @ 20,
+		magSlider = EZSlider(topZone,
+			(bounds.width - (butWidth * 2) - 20) @ 20,
 			\magnify,
-			[1, 10, \exp],
+			[1, 100, \exp],
 			{ |sl| magnify = sl.value }, magnify,
 			labelWidth: 45, numberWidth: 30);
 		magSlider.labelView.stringColor_(foreground);
@@ -111,15 +127,17 @@ SpatioScope {
 	showLocs {
 		var center = bounds.center;
 		var size = bounds.center.x * 0.1;
-		ampContainer = CompositeView(parent, bounds).background_(Color.clear);
+		parentView.mouseDownAction = defaultMouseDownAction;
+
+		redCol = Color.red(1, ampAlpha);
 
 		ampViews = locations.collect { |point, i|
 			var left = point.x + 1 * center.x;
 			var top = point.y + 1 * center.y;
-			StaticText(ampContainer, Rect.aboutPoint(left@top, size, size))
+			StaticText(parentView, Rect.aboutPoint(left@top, size, size))
 			.string_((i + 1).asString).align_(\center)
-				.stringColor_(foreground)
-			.background_(Color.black);
+			.stringColor_(foreground)
+			.background_( Color.black.alpha_(ampAlpha) );
 		};
 	}
 
@@ -216,9 +234,13 @@ SpatioScope {
 		if (parent.isClosed.not) {
 			ampViews.do { |el, i|
 				amp = (vals[i] ? 0).sqrt;
-				col = if (amp > redLevel, { Color.red }, { Color.yellow( amp ) });
+				col = if (amp > redLevel, redCol, { Color.yellow( amp, ampAlpha ) });
 				el.background_(col)
 			}
 		};
+	}
+
+	indicesFor { |x, y|
+		^ampViews.selectIndices { |vw| vw.bounds.contains(x@y) }
 	}
 }
