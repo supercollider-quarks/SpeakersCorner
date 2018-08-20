@@ -44,6 +44,10 @@ z.offset_(4);
 CLASSMETHODS::
 
 METHOD:: new
+code::
+	// supply locations by hand - 1@1 is left bottom.
+z = SpatioScope([ -0.5 @ -0.7, 0.5 @ -0.4, 0.8 @ 0.8, -0.5 @ 0.5, 0@0 ]);
+::
 
 ARGUMENT:: locations
 locations in space of [-1, 1] for x and y
@@ -55,14 +59,13 @@ which window or view to show the spatioScope on
 ARGUMENT:: bounds
 view bounds for the spatioScope
 
-code::
-	// supply locations by hand - 1@1 is left bottom.
-z = SpatioScope([ -0.5 @ -0.7, 0.5 @ -0.4, 0.8 @ 0.8, -0.5 @ 0.5, 0@0 ]);
-::
-
 
 METHOD:: grid
 create a spatioScope with a grid of locations
+
+code::
+z = SpatioScope.grid(4,6);
+::
 
 ARGUMENT:: numx
 number of locations per row
@@ -77,9 +80,6 @@ which window or view to show the spatioScope on
 ARGUMENT:: bounds
 view bounds for the spatioScope
 
-code::
-z = SpatioScope.grid(4,6);
-::
 
 METHOD:: gridPos
 create a grid of locations to use in a spatioScope
@@ -88,9 +88,21 @@ SpatioScope.gridPos(2, 4).printAll;
 SpatioScope.gridPos(4, 6).printAll;
 ::
 
-
 METHOD:: ring
 create a spatioScope with a ring of locations
+
+code::
+z = SpatioScope.ring(5);	// 1 is right
+z = SpatioScope.ring(8);	// more speakers
+z = SpatioScope.ring(8, 0.8);	// ring radius
+z = SpatioScope.ring(5, 0.5, 0.5pi);	// radius, rotate location clockwise -> bottom
+z = SpatioScope.ring(6, 0.5, pi);	// radius, rotate location clockwise -> left
+z = SpatioScope.ring(7, 0.5, 1.5pi);	// radius, rotate location clockwise -> top
+
+	// a ring + e.g. subwoofer in center
+z = SpatioScope(SpatioScope.ringPos(6, 0.8, pi) ++ [0@0]);
+::
+
 ARGUMENT:: num
 number of locations
 ARGUMENT:: radius
@@ -105,18 +117,6 @@ which window or view to show the spatioScope on
 ARGUMENT:: bounds
 view bounds for the spatioScope
 
-code::
-z = SpatioScope.ring(5);	// 1 is right
-z = SpatioScope.ring(8);	// more speakers
-z = SpatioScope.ring(8, 0.8);	// ring radius
-z = SpatioScope.ring(5, 0.5, 0.5pi);	// radius, rotate location clockwise -> bottom
-z = SpatioScope.ring(6, 0.5, pi);	// radius, rotate location clockwise -> left
-z = SpatioScope.ring(7, 0.5, 1.5pi);	// radius, rotate location clockwise -> top
-
-	// a ring + e.g. subwoofer in center
-z = SpatioScope(SpatioScope.ringPos(6, 0.8, pi) ++ [0@0]);
-::
-
 
 METHOD:: ringPos
 create an array of locations that form a ring
@@ -127,21 +127,6 @@ SpatioScope.ringPos(8);
 
 METHOD:: rings
 create a spatioScope with locations that form concentric rings
-
-ARGUMENT:: nums
-number of speakers in each ring
-ARGUMENT:: radii
-the radii of each ring (nil distributes the radii between 0 and 1)
-ARGUMENT:: angleOffsets
-the angle offsets for each ring; if a single value, it applies to all rings.
-ARGUMENT:: server
-which server
-ARGUMENT:: parent
-which window or view to show the spatioScope on
-ARGUMENT:: bounds
-view bounds for the spatioScope
-
-
 code::
 z = SpatioScope.rings([8, 4]);	// 2 rings, outer ring is lower channels
 
@@ -158,6 +143,20 @@ z = SpatioScope.rings([16, 12, 8, 4], nil, (-0.5 + [0.0625, 0.083, 0.125, 0.25])
 	// test with several sources
 { { Ringz.ar(Dust2.ar(5), exprand(300, 10000), exprand(0.03, 0.1)) }.dup(z.numChannels) }.play;
 ::
+
+ARGUMENT:: nums
+number of speakers in each ring
+ARGUMENT:: radii
+the radii of each ring (nil distributes the radii between 0 and 1)
+ARGUMENT:: angleOffsets
+the angle offsets for each ring; if a single value, it applies to all rings.
+ARGUMENT:: server
+which server
+ARGUMENT:: parent
+which window or view to show the spatioScope on
+ARGUMENT:: bounds
+view bounds for the spatioScope
+
 
 INSTANCEMETHODS::
 
