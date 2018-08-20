@@ -182,7 +182,7 @@ SpatioScope {
 
 
 	// listen to control buses
-	krListen{
+	krListen {
 		rate = \control;
 		proxy.source = {
 			Amplitude.kr(In.kr(this.offset, this.numChannels), 0, 0.5)
@@ -190,7 +190,7 @@ SpatioScope {
 	}
 
 	// listen to audio rate buses
-	arListen{
+	arListen {
 		rate = \audio;
 		proxy.source = {
 			Amplitude.kr(InFeedback.ar(this.offset, this.numChannels), 0, 0.5)
