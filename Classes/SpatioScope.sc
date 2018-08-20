@@ -25,9 +25,9 @@ SpatioScope {
 		numChannels = locations.size;
 
 		proxy = proxy ?? {  NodeProxy.control(server, this.numChannels) };
-		proxy.source = {
-			Amplitude.kr(InFeedback.ar(this.offset, this.numChannels), 0, 0.5)
-		};
+		proxy.prime({
+			A2K.kr(PeakFollower.kr(InFeedback.ar(this.offset, this.numChannels), 0.9999))
+		});
 
 		rate = \audio;
 
@@ -70,6 +70,7 @@ SpatioScope {
 	offset_ { |inChan=0|
 		if (inChan.inclusivelyBetween(0, this.maxBusNum ) ) {
 			offset = inChan;
+			proxy.rebuild;
 			if (skipjack.task.isPlaying) { this.stop.start };
 		}{
 			"%: new offset out of range of valid busnumbers!".format(thisMethod).warn;
@@ -199,15 +200,17 @@ SpatioScope {
 	start {
 		if(server.serverRunning.not) {
 			"SpatioScope: server not running.".warn;
-			skipjack.stop;
-			this.updateViews;
+			this.stop;
 			^this
 		};
-		proxy.rebuild;
-		fork { 0.4.wait; proxy.send };
-		skipjack.start;
-		resp.remove.add;
-		this.updateViews;
+		fork ({
+			proxy.rebuild;
+			server.sync;
+			0.4.wait;
+			skipjack.start;
+			resp.remove.add;
+			this.updateViews;
+		}, AppClock);
 	}
 
 	updateViews {
