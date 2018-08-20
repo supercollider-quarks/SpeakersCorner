@@ -2,7 +2,7 @@ SpatioScope {
 
 	var <locations, <server,  <bounds, <>background, <>foreground;
 	var <numChannels, <offset = 0;
-	var <proxy, <resp, <skipjack, <lastAmps;
+	var <proxy, <resp, <skipjack, <isOn, <lastAmps;
 	var <parent, <parentView, <topZone, <startBtn, <stopBtn, <magSlider;
 	var <ampViews, <>ampAlpha = 0.6, <>magnify=1, <>redLevel=0.95;
 	var <redCol;
@@ -30,6 +30,7 @@ SpatioScope {
 		});
 
 		rate = \audio;
+		isOn = false;
 
 		resp.remove;
 		resp = OSCFunc({ arg msg;
@@ -134,7 +135,7 @@ SpatioScope {
 
 		ampViews = locations.collect { |point, i|
 			var left = point.x + 1 * center.x;
-			var top = point.y + 1 * center.y;
+			var top = point.y + 1.05 * center.y;
 			StaticText(parentView, Rect.aboutPoint(left@top, size, size))
 			.string_((i + 1).asString).align_(\center)
 			.stringColor_(foreground)
@@ -203,6 +204,9 @@ SpatioScope {
 			this.stop;
 			^this
 		};
+
+		isOn = true;
+
 		fork ({
 			proxy.rebuild;
 			server.sync;
@@ -214,10 +218,10 @@ SpatioScope {
 	}
 
 	updateViews {
-		var isOn = skipjack.task.isPlaying.binaryValue;
+		var isOnValue = isOn.binaryValue;
 		if (parent.isClosed.not) {
-			startBtn.value_(isOn);
-			stopBtn.value_(1 - isOn);
+			startBtn.value_(isOnValue);
+			stopBtn.value_(1 - isOnValue);
 			magSlider.value_(magnify);
 			server.listSendMsg([\c_getn, proxy.index, this.numChannels]);
 		};
@@ -227,6 +231,7 @@ SpatioScope {
 		skipjack.stop;
 		proxy.free;
 		resp.remove;
+		isOn = false;
 		this.updateViews;
 		this.amps_([]);
 	}
