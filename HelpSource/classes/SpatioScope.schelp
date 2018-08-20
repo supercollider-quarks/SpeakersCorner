@@ -1,3 +1,4 @@
+
 TITLE:: SpatioScope
 summary:: monitor volume levels on multiple speakers
 categories:: GUI>Views
@@ -49,10 +50,8 @@ locations in space of [-1, 1] for x and y
 
 ARGUMENT:: server
 which server to watch
-
 ARGUMENT:: parent
 which window or view to show the spatioScope on
-
 ARGUMENT:: bounds
 view bounds for the spatioScope
 
@@ -70,6 +69,14 @@ number of locations per row
 
 ARGUMENT:: numy
 number of locations per column
+
+ARGUMENT:: server
+which server
+ARGUMENT:: parent
+which window or view to show the spatioScope on
+ARGUMENT:: bounds
+view bounds for the spatioScope
+
 code::
 z = SpatioScope.grid(4,6);
 ::
@@ -91,6 +98,13 @@ radius of ring
 ARGUMENT:: angleOffset
 clockwise angle offset for location 1: 0 is right, 0.5pi is bottom, etc.
 
+ARGUMENT:: server
+which server
+ARGUMENT:: parent
+which window or view to show the spatioScope on
+ARGUMENT:: bounds
+view bounds for the spatioScope
+
 code::
 z = SpatioScope.ring(5);	// 1 is right
 z = SpatioScope.ring(8);	// more speakers
@@ -101,7 +115,6 @@ z = SpatioScope.ring(7, 0.5, 1.5pi);	// radius, rotate location clockwise -> top
 
 	// a ring + e.g. subwoofer in center
 z = SpatioScope(SpatioScope.ringPos(6, 0.8, pi) ++ [0@0]);
-
 ::
 
 
@@ -121,8 +134,15 @@ ARGUMENT:: radii
 the radii of each ring (nil distributes the radii between 0 and 1)
 ARGUMENT:: angleOffsets
 the angle offsets for each ring; if a single value, it applies to all rings.
+ARGUMENT:: server
+which server
+ARGUMENT:: parent
+which window or view to show the spatioScope on
+ARGUMENT:: bounds
+view bounds for the spatioScope
 
 
+code::
 z = SpatioScope.rings([8, 4]);	// 2 rings, outer ring is lower channels
 
 z = SpatioScope.rings([8, 4], nil, -0.5pi);	// 1 on top
@@ -137,7 +157,7 @@ z = SpatioScope.rings([16, 12, 8, 4], nil, (-0.5 + [0.0625, 0.083, 0.125, 0.25])
 
 	// test with several sources
 { { Ringz.ar(Dust2.ar(5), exprand(300, 10000), exprand(0.03, 0.1)) }.dup(z.numChannels) }.play;
-
+::
 
 INSTANCEMETHODS::
 
@@ -165,8 +185,10 @@ METHOD:: gui
 METHOD:: start, stop
 start and stop the spatioScope
 
-METHOD:: show, hide
-show and hide the spatioScope
+METHOD:: show
+show (and usually start) the spatioScope
+METHOD:: hide
+hide (and usually stop) the spatioScope
 
 METHOD:: magnify
 set the magnification value
