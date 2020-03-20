@@ -61,6 +61,10 @@ z.arListen(0, 4);
 
 CLASSMETHODS::
 
+METHOD:: group
+get and set the parent group of the listening synths
+(to set a spcific order, or to load-balance with supernova)
+
 METHOD:: new
 code::
 	// supply locations by hand - 1@1 is left bottom.
@@ -235,7 +239,13 @@ the bus channel from which to start listening
 METHOD:: numChannels
 The number of adjacent busses to listen to, which is inferred from the number of locations.
 
-METHOD:: server, skipjack, proxy, resp
+METHOD:: proxy
+the nodeproxy which runs the observing synths
+METHOD:: get, set
+get and set parameters of the proxy.
+usually, this is code::\decayTime:: and code::\busOffset::.
+
+METHOD:: server, skipjack, resp
 internal instance variables
 
 METHOD:: parent, parentView, bounds
