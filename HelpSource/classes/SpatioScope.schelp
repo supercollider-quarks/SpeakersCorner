@@ -11,33 +11,51 @@ SpatioScope has a layout of speaker positions in 2D space,
 and shows the volume levels at each speaker's location.
 
 code::
-s.boot;
+(
+s.options.numOutputBusChannels = 4; s.reboot;
+
 	// quick first example:
 z = SpatioScope.new;	// default is 4 speakers
 
-	// 4 chans of sound
+	// 4 chans of sound, randomly panning between
 { LFDNoise3.ar([2, 3, 5, 8] * 1000) * LFNoise2.kr([5, 8, 13, 21] * 0.1).max(0); }.play;
 
 	// SpatioScopes survive cmd-period
 thisProcess.stop;
 
-{ PanAz.ar(4, ClipNoise.ar, LFSaw.kr(SinOsc.ar(0.03) * 1), 0.1) }.play;
+x = { SinOsc.ar(100) * \amp.kr(0.2) }.play;
+x.set(\amp, 1);
+z.redLevel = 0.99;
+z.redLevel = 1.0;
+x.set(\amp, 1.1);
+x.free;
+
+{ PanAz.ar(4, ClipNoise.ar, LFSaw.kr(SinOsc.ar(0.03) * 2)) }.play;
 
 	// stop and start by hand
 z.stop;
 z.start;
-z.gui;
 // hide also stops it
 z.hide;
 // show also starts it
 z.show;
 
-// offset channels - listen to out channels 4-7
-z.offset_(4);
-
+// shift the bus channels by an offset  - listen to out channels 4-7
+z.busOffset_(8);
+s.scope(4, 8);
 
 // play something on these to check
-{ PanAz.ar(4, ClipNoise.ar, LFSaw.kr(SinOsc.ar(0.03) * 1), 0.1) }.play(outbus: 4);
+{ Decay.ar(Impulse.ar(1, [1, 2, 3, 4] / 4), 0.01) }.play(outbus: 8);
+// try changing the decayTime
+z.set(\decayTime, 0.4);
+z.set(\decayTime, 1);
+
+~lfo = { SinOsc.kr([1, 2, 3, 4] / 4).range(0, 0.8) }.play;
+s.scope(4, rate: \control);
+z.krListen(0);
+
+// back to audio out
+z.arListen(0, 4);
 
 ::
 
@@ -58,7 +76,8 @@ ARGUMENT:: parent
 which window or view to show the spatioScope on
 ARGUMENT:: bounds
 view bounds for the spatioScope
-
+ARGUMENT:: busOffset
+busOffset at which spatioScope begins to listen
 
 METHOD:: grid
 create a spatioScope with a grid of locations
@@ -160,55 +179,81 @@ view bounds for the spatioScope
 
 INSTANCEMETHODS::
 
-private:: init, krListen, arListen, showLocs, updateViews
-
-METHOD:: locations
-get the locations
-
-METHOD:: numChannels
-the number of adjacent busses to listen to. this is inferred from
-the number of locations.
-
-METHOD:: offset
-the bus channel from which to start listening
-(see examples on top)
-
-METHOD:: rate
-the rate and bus type to listen to: one of [\audio, \control]
-
-METHOD:: maxBusNum
-get the maximum valid bus number for offset
+private:: init, showLocs, updateViews, maxBusNum, defaultMouseDownAction, topZone
+private:: getAmpValues, getAmpsFunc
 
 METHOD:: gui
 
 METHOD:: start, stop
 start and stop the spatioScope
 
+METHOD:: isOn
+boolean whether spatioscope is running
+
 METHOD:: show
 show (and usually start) the spatioScope
 METHOD:: hide
 hide (and usually stop) the spatioScope
 
+METHOD:: locations
+Get the xy locations of the channels
+
 METHOD:: magnify
-set the magnification value
+get and set a factor by which to magnify amp levels shown
 
 METHOD:: amps
 the current amps measured
 
 METHOD:: redLevel
-the level above which the meter turns red
+get and set the amp level above which the meter turns redCol
+
+METHOD:: redCol
+get and set color for overload level display
+
+METHOD:: ampAlpha
+get and set amp colors transparency
+
+METHOD:: arListen
+tell spatio to listen to audio rate channels with:
+ARGUMENT:: busIndex
+ARGUMENT:: numChannels
+ARGUMENT:: decayTime
+
+METHOD:: krListen
+tell spatio to listen to a control rate signal with:
+ARGUMENT:: busIndex
+ARGUMENT:: numChannels
+ARGUMENT:: decayTime
+
+METHOD:: rate
+the rate and bus type to listen to: one of [\audio, \control]
+
+METHOD:: busOffset
+the bus channel from which to start listening
+(see examples on top)
+
+METHOD:: numChannels
+The number of adjacent busses to listen to, which is inferred from the number of locations.
 
 METHOD:: server, skipjack, proxy, resp
 internal instance variables
 
-METHOD:: parent, bounds
+METHOD:: parent, parentView, bounds
 parent view or window of the spatioScope, and its initial bounds
 
 METHOD:: startBtn, stopBtn, ampViews, magSlider
 gui variables
 
 METHOD:: background, foreground
-the background and foreground colors of the spatioScope view
+get and set the background and foreground colors _before_
+showing the spatioScope view
+
+METHOD:: clickAction
+the action to perform when a click happens on the spatioscope.
+passes in the indices of the ampviews touched.
+
+METHOD:: indicesFor
+find indices of ampViews at a given point
 
 EXAMPLES::
 

@@ -1,47 +1,57 @@
 SpatioScope {
 
+	classvar <>group;
+
 	var <locations, <server,  <bounds, <>background, <>foreground;
-	var <numChannels, <offset = 0;
-	var <proxy, <resp, <skipjack, <isOn, <lastAmps;
+	var <numChannels;
+	var <proxy, <resp, <skipjack, <isOn, <amps;
 	var <parent, <parentView, <topZone, <startBtn, <stopBtn, <magSlider;
-	var <ampViews, <>ampAlpha = 0.6, <>magnify=1, <>redLevel=0.95;
-	var <redCol;
+	var <ampViews, <>ampAlpha = 1.0, <>magnify=1, <>redLevel=1.0;
+	var <redCol, <getAmpsFunc;
 	var <>clickAction, <defaultMouseDownAction;
 
 	var <rate;
 
-	*new { arg locations, server, parent, bounds;
+	*new { arg locations, server, parent, bounds, busOffset = 0;
 		locations = locations ?? { SpatioScope.gridPos(2, 2) };
 		server = server ? Server.default;
 
 		^super.newCopyArgs(locations, server)
-			.init(bounds)
+			.init(bounds, busOffset)
 			.gui(parent)
-			// .start
+			.start
 	}
 
-	init { |argBounds|
+	init { |argBounds, argOffset|
 		bounds = argBounds ?? { Rect(0,0,410,410) };
 		numChannels = locations.size;
 
 		proxy = proxy ?? {  NodeProxy.control(server, this.numChannels) };
-		proxy.prime({
-			A2K.kr(PeakFollower.kr(InFeedback.ar(this.offset, this.numChannels), 0.9999))
-		});
+		group !? { proxy.parentGroup_(group) };
+		proxy.set(\busOffset, argOffset ? 0);
+
+		this.arListen;
 
 		rate = \audio;
 		isOn = false;
 
 		resp.remove;
-		resp = OSCFunc({ arg msg;
-			var amps;
-			// check if this reply message is for this spatioscope
-			if ( msg[[1, 2]] == [proxy.bus.index, this.numChannels] ){
-				lastAmps = msg.drop(3);
-				// "got bus values with % values: %\n".postf(lastAmps.size, lastAmps);
-				{  this.amps_(lastAmps * (magnify ? 1)); }.defer;
-			};
-		}, '/c_setn', server.addr).permanent_(true);
+
+		if (server.isLocal) {
+			getAmpsFunc = { this.amps_(this.getAmpValues) }
+		} {
+			getAmpsFunc = { server.listSendMsg([\c_getn, proxy.index, this.numChannels]) };
+
+			resp = OSCFunc({ arg msg;
+				var amps;
+				// check if this reply message is for this spatioscope
+				if ( msg[[1, 2]] == [proxy.bus.index, this.numChannels] ){
+					amps = msg.drop(3);
+					// "got bus values with % values: %\n".postf(amps.size, amps);
+					{  this.amps_(amps); }.defer;
+				};
+			}, '/c_setn', server.addr).permanent_(true);
+		};
 
 		skipjack = SkipJack(
 			{ proxy.wakeUp; this.updateViews; },
@@ -55,8 +65,10 @@ SpatioScope {
 			var indices = this.indicesFor(x, y);
 			clickAction.value(indices, x, y, mod);
 		};
+
 		clickAction = { |indices, x, y, mod|
-			"clicked in ampView(s) at % at pos x: % y: % with mod key: %\n".postf(indices, x, y, mod)
+			"clicked in ampView(s) at % at pos x: % y: % with mod key: %\n"
+			.postf(indices, x, y, mod)
 		};
 	}
 
@@ -68,14 +80,21 @@ SpatioScope {
 		} - this.numChannels;
 	}
 
-	offset_ { |inChan=0|
+	busOffset { ^proxy.get(\busOffset) }
+
+	busOffset_ { |inChan=0|
 		if (inChan.inclusivelyBetween(0, this.maxBusNum ) ) {
-			offset = inChan;
-			proxy.rebuild;
-			if (skipjack.task.isPlaying) { this.stop.start };
+			proxy.set(\busOffset, inChan);
 		}{
-			"%: new offset out of range of valid busnumbers!".format(thisMethod).warn;
+			"%: new busOffset out of range of valid bus numbers!".format(thisMethod).warn;
 		};
+	}
+
+	set { |...args|
+		proxy.set(*args);
+	}
+	get { |...args|
+		proxy.get(*args);
 	}
 
 	gui { |argParent|
@@ -110,8 +129,8 @@ SpatioScope {
 			labelWidth: 45, numberWidth: 30);
 		magSlider.labelView.stringColor_(foreground);
 		magSlider.numberView.background_(foreground);
-//		magSlider.numberView.resize_(3);
-//		magSlider.sliderView.resize_(2);
+		//		magSlider.numberView.resize_(3);
+		//		magSlider.sliderView.resize_(2);
 
 		this.showLocs;
 		this.stop.start;
@@ -131,7 +150,7 @@ SpatioScope {
 		var size = bounds.center.x * 0.1;
 		parentView.mouseDownAction = defaultMouseDownAction;
 
-		redCol = Color.red(1, ampAlpha);
+		redCol = Color(1, 0.6, 0, ampAlpha);
 
 		ampViews = locations.collect { |point, i|
 			var left = point.x + 1 * center.x;
@@ -181,20 +200,39 @@ SpatioScope {
 		^this.new(locs, server, parent, bounds);
 	}
 
+	/* convert decayTime to samplerate:
+	var decayTime = 3;
+	var samplerate = 44100;
+	var numSamplesForRT60 = (samplerate * decayTime);
+	var coeff = (0.001 ** (1/numSamplesForRT60)).postln;
+	coeff ** samplerate; // must be decayTime again
+	*/
 
 	// listen to control buses
-	krListen {
+	krListen { |busIndex, numChannels, decayTime|
 		rate = \control;
-		proxy.source = {
-			Amplitude.kr(In.kr(this.offset, this.numChannels), 0, 0.5)
+		busIndex !? { proxy.set(\busOffset, busIndex) };
+		numChannels = numChannels ? this.numChannels;
+		decayTime !? { proxy.set(\decayTime, decayTime) };
+
+		proxy.source = { |decayTime = 1.0, busOffset|
+			var numSamplesForRT60 = SampleRate.ir * decayTime;
+			var coeff = 0.001 ** numSamplesForRT60.reciprocal;
+			PeakFollower.ar(In.kr(busOffset, numChannels), coeff)
 		};
 	}
 
 	// listen to audio rate buses
-	arListen {
+	arListen { |busIndex, numChannels, decayTime|
 		rate = \audio;
-		proxy.source = {
-			Amplitude.kr(InFeedback.ar(this.offset, this.numChannels), 0, 0.5)
+		busIndex !? { proxy.set(\busOffset, busIndex) };
+		numChannels = numChannels ? this.numChannels;
+		decayTime !? { proxy.set(\decayTime, decayTime) };
+
+		proxy.source = { |decayTime = 1.0, busOffset|
+			var numSamplesForRT60 = SampleRate.ir * decayTime;
+			var coeff = 0.001 ** numSamplesForRT60.reciprocal;
+			A2K.kr(PeakFollower.ar(InFeedback.ar(busOffset, numChannels), coeff))
 		};
 	}
 
@@ -206,15 +244,16 @@ SpatioScope {
 		};
 
 		isOn = true;
+		skipjack.start;
+		resp.remove.add;
+	}
 
-		fork ({
-			proxy.rebuild;
-			server.sync;
-			0.4.wait;
-			skipjack.start;
-			resp.remove.add;
-			this.updateViews;
-		}, AppClock);
+	getAmpValues {
+		if (server.serverRunning) {
+			^proxy.bus.getnSynchronous
+		} {
+			^[0]
+		}
 	}
 
 	updateViews {
@@ -223,7 +262,7 @@ SpatioScope {
 			startBtn.value_(isOnValue);
 			stopBtn.value_(1 - isOnValue);
 			magSlider.value_(magnify);
-			server.listSendMsg([\c_getn, proxy.index, this.numChannels]);
+			getAmpsFunc.value;
 		};
 	}
 
@@ -239,11 +278,14 @@ SpatioScope {
 	amps_ { arg vals;
 		var amp, col;
 		// "amps coming in: %\n".postf(vals);
+		amps = vals;
 		if (parent.isClosed.not) {
-			ampViews.do { |el, i|
-				amp = (vals[i] ? 0).sqrt;
-				col = if (amp > redLevel, redCol, { Color.yellow( amp, ampAlpha ) });
-				el.background_(col)
+			defer {
+				ampViews.do { |el, i|
+					amp = (vals[i] ? 0 * magnify).sqrt;
+					col = if (amp > redLevel, redCol, { Color.green( amp, ampAlpha ) });
+					el.background_(col)
+				}
 			}
 		};
 	}
