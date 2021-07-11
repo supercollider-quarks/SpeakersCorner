@@ -1,0 +1,98 @@
+
+TITLE:: TorusPanAz
+summary:: a panner for toroidal shaped setups
+categories:: Undocumented classes, UGens>Undocumented
+related:: Classes/PanRingTop, Classes/PanRingTopBot, Guides/SpeakersCorner
+
+DESCRIPTION::
+TorusPanAz is a panner for toroidal shaped setups. Can also be used for stacks of rings (cylinders) where panning beyond the top wraps back into the bottom.
+
+First code examples:
+
+code::
+
+s.boot;
+
+(
+z = { |hPos=0, vPos=0, hWidth=2, vWidth=2|
+	TorusPanAz.ar([8, 4, 4], Dust.ar(1000), hPos, vPos, 1, hWidth, vWidth);
+}.scope;
+)
+
+	// Check with SpatioScope:
+SpatioScope.rings([8, 4, 4]);
+
+z.set(\hPos, 0.25);
+z.set(\hPos, 0.5);
+
+z.set(\hPos, 0, \vPos, 0.667);	// into middle ring
+z.set(\hPos, 0.5);
+z.set(\hPos, 1);
+
+
+z.set(\hPos, 0, \vPos, 1.333);	// into top ring
+z.set(\hPos, 0.5);
+z.set(\hPos, 1);
+
+
+z.set(\hPos, 0, \vPos, 1.666);	// wrap back into bottom ring: half ...
+z.set(\hPos, 0, \vPos, 2);		// ... and fully back
+
+
+z.set(\hWidth, 4);			// horizontal width
+z.set(\hPos, 0.25);
+z.set(\hPos, 0.5);
+
+
+z.set(\hWidth, 2);
+z.set(\vWidth, 3);			// vertical width; not usually useful.
+
+z.set(\vPos, 0.666);
+z.set(\vPos, -0.666);
+
+z.set(\vWidth, 2);
+
+	// use for panning on a sphere:
+(
+z = { |hPos, vPos|
+	TorusPanAz.ar([1, 4, 6, 4, 1], Dust.ar(1000), hPos, vPos, 1, vOrient: 2);
+}.scope;
+)
+
+
+z.set(\vPos, 0);		// middle ring
+z.set(\vPos, 0.4);		// top ring
+z.set(\vPos, 0.8);		// top 1
+
+z.set(\hPos, 1);		// turn horiz 180 deg
+z.set(\vPos, 0.4);		// top ring, other side
+z.set(\vPos, 0);		// mid ring
+
+z.set(\vPos, -0.4);	// bottom ring
+z.set(\vPos, -0.8);	// bottom 1
+z.set(\hPos, 0);		// rotate back.
+
+::
+
+CLASSMETHODS::
+
+METHOD:: ar
+argument:: numSpeakers
+number of speakers per ring, default is #[ 16, 12, 8, 4 ]
+argument:: in
+the input signal to pan
+argument:: hPos
+horizontal position, default is 0 (first speaker in ring)
+argument:: vPos
+vertical position, default is 0 (bottom ring)
+argument:: level
+amplitude control, kr (default 1)
+argument:: hWidth
+horizontal width, max number of speakers that sound together (default 2)
+argument:: vWidth
+vertical width, max number of speakers that sound together (default 2)
+argument:: hOrients
+the orientation where vPos 0 on every ring pans to (cf. orientation for PanAz
+argument:: vOrient
+	vertical orientation, default 0, the first ring specified.
+
