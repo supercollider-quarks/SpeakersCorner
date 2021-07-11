@@ -4,67 +4,92 @@
 */
 
 Latency {
-	classvar <syn, <resp, <latencies, <serv, lastTime;
-	classvar <>verbose = false;
+	classvar <syn, <resp, <latencies, <serv, <lastTime, <threshold = 0.03;
+	classvar <>verbose = false, waitingForMic = false;
 
 	*initClass {
 		Class.initClassTree(OSCFunc);
 
 		// register to receive latency values
 		resp = OSCFunc({ arg msg;
-			var which = msg[2], exactTime = msg[3], delta;
+			var which = msg[2].asInteger;
+			var exactTimeInSamples = msg[3].asInteger;
+			var deltaSamples, deltaTimeMsec;
+			var lastInChan;
 
 			if ( verbose ) { msg.postln; };
-		//	msg.postcs;
-		//	[exactTime, which].dump;
-			if ( syn.notNil ){
-				// make sure we only listen to the trigger coming from the latency measurement synth
-				if ( msg[1] == syn.nodeID ){
-					[ 	{ 	delta = (exactTime - lastTime[1]);
-						[lastTime[0], delta, delta / serv.sampleRate].postln;
-						latencies[lastTime[0] - 1] = delta;
-					},
-						{ lastTime = [which, exactTime] }
-					].clipAt(which).value;
-				};
-			};
+			// make sure we only listen to triggers from our synth
+			if ( syn.notNil and: { msg[1] == syn.nodeID }){
+
+				if (which > 0) {
+					// store ID and time for internal pulse
+					lastTime = [which, exactTimeInSamples];
+					waitingForMic = true;
+				} {
+					// measured pulse trigger from input
+					if (waitingForMic) {
+						lastInChan = lastTime[0] - 1;
+						deltaSamples = (exactTimeInSamples - lastTime[1]);
+						deltaTimeMsec = (deltaSamples * 1000 / serv.sampleRate).round(0.01);
+
+						[ lastTime[0], deltaSamples, deltaTimeMsec ].postln;
+						waitingForMic = false;
+						// store latencies for channels
+						latencies[lastInChan] = deltaSamples;
+					}
+				}
+			}
 		}, '/tr');
 	}
 
-	*testAudio { |numChans=5, maxDT = 0.2, server, inChan=0|
+	*testAudio { |numChans=5, maxDT = 0.5, server, inChan=0|
 		serv = server ? Server.default;
 		latencies = Array.newClear(numChans);
-		resp.remove;
-		resp.add;
-		syn = { 	var pulses, audIn, phase;
-			var pulseFreq = (maxDT * 2 * numChans).reciprocal;
-			pulseFreq;
+		resp.enable;
+		fork {
+			syn = { |threshold = 0.02|
+				var pulses, audIn, phase;
+				var pulseFreq = (maxDT * 2 * numChans).reciprocal;
 
-			phase = Phasor.ar(0, 1, 0, 2 ** 30);	// time in samples
-			audIn = SoundIn.ar(inChan);				// mike input
+				phase = Phasor.ar(0, 1, 0, 2 ** 30);	// time in samples
+				audIn = SoundIn.ar(inChan);				// mike input
 
-			pulses =  Decay2.ar(
-				Impulse.ar( pulseFreq,
-					0.99 - ((0..numChans - 1) / numChans) // phase
-				), 0.0, 0.002
-			);
+				pulses =  Decay2.ar(
+					Impulse.ar( pulseFreq,
+						0.99 - ((0..numChans - 1) / numChans) // phase
+					), 0.0, 0.002
+				);
 				// send when audioin triggers
-			SendTrig.ar( Trig1.ar(audIn > 0.1, 0.05), 0, phase);
+				SendTrig.ar( Trig1.ar(audIn.abs > threshold, 0.05), 0, phase);
 				// send when each output plays a trigger
-			SendTrig.ar(pulses > 0.1, (1..numChans), phase);
-			(pulses ++ [ Silent.ar, audIn ])
-		}.play(serv);
+				SendTrig.ar(pulses > 0.03, (1..numChans), phase);
+				(pulses ++ [ Silent.ar, audIn ])
+			}.play(serv);
+			serv.sync;
+			syn.set(\threshold, threshold);
+			0.01.wait;
+			"*** chan samples msec latency:".postln;
+		}
+	}
+
+	*threshold_ { |val|
+		if (val.isKindOf(SimpleNumber)) {
+			threshold = val.clip(0.001, 1);
+			syn !? { syn.set(\threshold, threshold) }
+		};
 	}
 
 	*stop {
-		resp.remove;
+		resp.disable;
 		syn.free;
+		syn = nil;
 		this.post;
 	}
 
 	*post {
 		"// measured latencies:".postln;
 		"in samples: ".post; latencies.postcs;
-		"in seconds: ".post; (latencies / serv.sampleRate).postcs;
+		"in seconds: ".post; (latencies / serv.sampleRate).round(0.00001).postcs;
+		"in milliseconds: ".post; (latencies * 1000 / serv.sampleRate).round(0.01).postcs;
 	}
 }
