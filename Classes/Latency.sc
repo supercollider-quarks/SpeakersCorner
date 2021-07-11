@@ -1,6 +1,34 @@
 /*
-	Latency.testAudio(2, 1);
-	Latency.stop;
+// Two use common cases:
+
+// 1. measure only hardware latency, i.e. electrically:
+// connect first hardware output to first hardware input
+
+// set hardwareBufferSize to as low as it will go
+s.options.hardwareBufferSize = 128; s.reboot;
+
+// test with one channel output, pulse every 0.5 sec,
+Latency.testAudio(1, 0.5); // test 1 chan
+Latency.stop;
+Latency.latencies;
+
+// 2. measure multiple channels over loudspeakers and mic:
+// set up loudspeaker as intended
+// put single mic in sweet spot
+
+// set hardwareBufferSize to as low as it will go
+s.options.hardwareBufferSize = 128; s.reboot;
+
+// tune threshold until you get steady times for each channel
+Latency.threshold =  0.1;
+// when times are stable, stop and post:
+Latency.stop;
+
+
+// to debug, see all messages coming in
+Latency.verbose = true;
+// and compare measured latencies
+Latency.latencies;
 */
 
 Latency {
