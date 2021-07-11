@@ -1,0 +1,65 @@
+TITLE:: PanRingTopBot
+summary:: panner for a symmetrical ring with one speaker each on top and bottom.
+categories:: UGens>Panning
+related:: Classes/TorusPanAz, Classes/PanRingTop, Guides/SpeakersCorner
+
+DESCRIPTION::
+
+code::
+s.boot;
+
+// orientation defaults to 0.5, between first 2 chans.
+
+z = { |azi=0, elev=0, width = 2, orient=0.5|
+	PanRingTopBot.ar(4, Dust2.ar(1000, 0.5), azi, elev, width, orient)
+}.scope;
+
+// The order of the returned channels is: ring1, ring2 ... ringN, top, bottom.
+
+///// note that orient is 0.5 -> azi 0 is mid between chan 0 and 1
+z.set(\azi, -0.25);		// spk 0
+z.set(\azi, 0.25);		// spk 1
+z.set(\azi, 0.75);		// spk 2
+z.set(\azi, 1.25);		// spk 3
+z.set(\elev, 0.5);		// halfway up to spk 4, top.
+z.set(\elev, 1);		// spk 4 top only
+z.set(\elev, 0.5);		// halfway up to spk 4, top.
+z.set(\azi, 0.5);		// change pan on ring
+z.set(\elev, 0);		// on ring only spks 1, 2
+z.set(\elev, -0.5);		// halfway down to bottom, spk 5
+z.set(\elev, -1);		// all down to spk 4
+z.set(\elev, 0);		// back to ring
+
+z.set(\width, 4); // spreads over max 4 chans
+z.set(\azi, 1.0); // when between chans
+z.set(\width, 2); // back to 2
+
+z.set(\orient, 0);   // when orient is 0...
+z.set(\azi, 0);      // azi 0 is right on chan 0 only!
+z.set(\azi, 0.5); // chan 1 ..
+z.set(\azi, 1.0); // chan 2 ..
+z.set(\azi, 1.5); // chan 3 ..
+::
+
+CLASSMETHODS::
+
+private::ar1, kr1
+
+METHOD:: ar, kr
+argument:: numChans
+number of channels in the ring
+argument:: in
+input signal to pan
+argument:: azi
+azimuth as in PanAz - angle in the horizontal ring; from 0 to 2, wraps around.
+argument:: elev
+height above the horizon, toward top speaker; 0 is ring, 1 is top.
+argument:: width
+pan width in the ring, as in PanAz
+argument:: orientation
+orientation in the ring, as in PanAz
+0 means azi 0 is chan0, 0.5 means azi 0 is between chan0 and chan1.
+
+The order of the returned channels is: ring1, ring2 ... ringN, top, bottom.
+
+
