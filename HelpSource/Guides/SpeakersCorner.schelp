@@ -8,9 +8,9 @@ Description::
 
 SpeakersCorner is a collection of tools for Multi-Speaker setups:
 
-SpatioScope		displays loudspeaker setups in 2D layouts, shows audio levels on the speakers
-
 list::
+##link::Classes/SpatioScope:: displays loudspeaker setups in 2D layouts, shows audio levels on the speakers
+
 ##link::Classes/Latency:: measures overall audio hardware latency, and overall delay times for each channel, i.e. including sound travel from loudspeakers to mic; can be used to compensate distances for a given listening/microphone location
 
 ##link::Classes/SpeakerAdjust:: adjust delaytime, level and optional EQ for individual speaker channels
