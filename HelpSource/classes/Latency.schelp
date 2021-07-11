@@ -1,5 +1,5 @@
 class:: Latency
-summary:: A quick tool to measure audio latency for multiple channels
+summary:: Measure audio latency for multiple channels
 related:: Classes/Server, Classes/ServerOptions
 categories:: Utilities
 

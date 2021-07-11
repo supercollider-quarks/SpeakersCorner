@@ -1,0 +1,31 @@
+Title:: SpeakersCorner
+summary:: Tools for multichannel setups
+related:: Classes/SpatioScope, Classes/SpeakerAdjust, Classes/Latency, Classes/Spectralyzer, Classes/TorusPanAz, Classes/PanRingTop, Classes/PanRingTopBot
+categories::Guides
+
+
+Description::
+
+SpeakersCorner is a collection of tools for Multi-Speaker setups:
+
+SpatioScope		displays loudspeaker setups in 2D layouts, shows audio levels on the speakers
+
+list::
+##link::Classes/Latency:: measures overall audio hardware latency, and overall delay times for each channel, i.e. including sound travel from loudspeakers to mic; can be used to compensate distances for a given listening/microphone location
+
+##link::Classes/SpeakerAdjust:: adjust delaytime, level and optional EQ for individual speaker channels
+
+##link::Classes/Spectralyzer:: displays frequency response of a signal, e.g. a loudspeaker by microphone,
+can be used to tune by channel with link::Classes/SpeakerAdjust::
+::
+
+Some multichannel panning classes:
+list::
+##link::Classes/TorusPanAz:: for concentric rings of speakers
+
+##link::Classes/PanRingTop:: for ring + a top speaker
+
+##link::Classes/PanRingTopBot:: for rings, a top and a bottom speaker
+::
+
+Written by Alberto de Campo, based on work done within the SonEnvir project.
