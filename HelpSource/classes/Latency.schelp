@@ -1,0 +1,176 @@
+class:: Latency
+summary:: A quick tool to measure audio latency for multiple channels
+related:: Classes/Server, Classes/ServerOptions
+categories:: Utilities
+
+
+DESCRIPTION::
+Latency is the time delay between when one initiates something and when it happens.
+There are several places in the SC architecture where latencies occur:
+
+list::
+## Interpreter latency
+## Network latency
+## Server and audio hardware latency
+## sound travel time through air
+::
+
+The Latency class is intended for measuring audio hardware latency,
+and overall latency, which includes sound travel through air.
+Latency does its measuring by generating pulses on one or several output channels,
+and measuring time until each pulse registers again at a given audio input.
+[ interpreter latency is covered in the examples section below ]
+
+subsection:: Interpreter latency
+
+This is the time between entering a command and the time it is executed in the client (sclang).
+This depends on how much code runs "at once" and how complex the calculations are.
+For many cases, it is near zero.
+
+code::
+// a function that does nothing runs really fast
+bench({ nil });
+// filling a big array with random numbers takes a while longer.
+bench({ Array.rand(100000, 0.0, 1.0) });
+	// different operations may take different times
+bench({ 100000.do { 3.hypot(2) } });
+bench({ 100000.do { 12.squared } });
+::
+
+subsection:: Network latency
+
+sclang and scserver communicate via network (OpenSoundControl, usually UDP, or also TCP/IP);
+until a network packet sent from sclang to the server arrives, an undetermined time passes.
+On the same machine, with little other network traffic, this can be as low as 0.02 seconds,
+depending mainly on the server's hardware buffer size.  This can be measured with:
+
+code::
+s.boot;
+// posts worst case of ping time
+s.ping(10, 0.2);
+// this is usually in the range of 2 x hardwareBufferSize
+s.options.hardwareBufferSize
+s.options.hardwareBufferSize / s.sampleRate * 2;
+::
+
+To ensure that messages arrive at the server in the correct order, and with exact relative timing,
+the server has a latency value code:: s.latency :: which can be tuned. By default, this is rather high with 0.2 secs. For tigher interaction, e.g. when playing an instrument-like interface, one can tune this value down until occasional late messages appear, and then go up until they disappear again.
+
+code::
+// server has hardwareBufferSize 512 for this example.
+s.options.hardwareBufferSize = 512; s.reboot;
+// do something that sends messages with server latency
+Pbind(\degree, Pbrown(-14, 14, 3), \dur, 1/8).play;
+s.latency;
+s.latency = 0.1;   // tune down ...
+s.latency = 0.05;
+s.latency = 0.025;
+s.latency = 0.012; // ... until every message posts "late 0.01...." now
+s.latency = 0.018; // go back up -> fewer late messages
+s.latency = 0.021; // go back up until ...
+s.latency = 0.024; // late messages are completely gone again
+
+s.latency = 0.03; // this works on many systems
+::
+
+subsection:: Measuring effective audio hardware latency
+
+scsynth passes buffers (one block of numbers per channel) to the audio hardware;
+the size of these buffers determines the time it takes between when a sound is calculated
+internally and when it actually is heard. The same goes for audio inputs, which are passed
+to SC as blocks, so there is some latency between when e.g. a trigger happens at the
+analog audio input, and when it is detected with e.g. a Trig Ugen.
+
+While hardware buffer size and other factors can be set directly with utility software
+for audiocards, such software often does not consider all the factors:
+E.g. the operating system itself, firewire or USB connections, and intermediate layers
+like Jack may introduce extra buffering and thus accumulate delay time.
+Thus, connecting the first audio output to the first audio input electrically is the
+most accurate measuring methods, as it includes all such delays.
+
+code::
+// connect first hardware output to first hardware input
+
+s.boot;
+// test with 1 out channel, pulse every 0.5 sec, server s, input channel 0
+Latency.testAudio(numChans: 1, maxDT: 0.5, server: s, inChan: 0);
+Latency.stop;
+// set hardwareBufferSize to as low as it will go
+// on macOS, this works in SC itself:
+// (other platforms need software like jack)
+s.options.hardwareBufferSize = 128;
+// boot with the desired settings
+s.reboot;
+
+// test with 1 out channel, pulse every 0.5 sec, server s, input channel 0
+Latency.testAudio(numChans: 1, maxDT: 0.5, server: s, inChan: 0);
+::
+
+subsection:: Measure overall delay times for multiple loudspeakers
+For multi-speaker setups, distances to any listening position introduce delays,
+so measuring overall audio latency can be useful. This is done by setting up
+all loudspeakers as desired, putting a single mic in the "sweet spot", or another
+typical listening position, and recording responses over all acoustic channels.
+
+code::
+// set hardwareBufferSize to as low as it will go
+s.options.hardwareBufferSize = 128; s.reboot;
+
+// test with number of speakers, pulse every 0.5 sec, server s, input channel 0
+Latency.testAudio(numChans: 5, maxDT: 0.5, server: s, inChan: 0);
+
+// tune threshold until you get steady times for each channel
+Latency.threshold =  0.03;
+
+// to debug, see message coming in
+Latency.verbose = true;
+// and compare measured latenciess
+Latency.latencies;
+::
+
+CLASSMETHODS::
+
+private:: initClass
+
+METHOD:: testAudio
+main method to measure audio latency
+
+ARGUMENT:: numChans
+the number of output channels to send pulses on
+
+ARGUMENT:: maxDT
+maximum expected delay time, determines pulse cycle time
+
+ARGUMENT:: server
+the server to play on, default is Server.default
+
+ARGUMENT:: inChan
+the input channel on which incoming pulses are measured
+
+METHOD:: verbose
+get and set a flag whether to post verbosely
+
+METHOD:: threshold
+get and set amplitude threshold for pulses on input channel
+
+METHOD:: stop
+stop measurement
+
+METHOD:: latencies
+the latest measured latencies for all channels
+
+METHOD:: post
+post the latest measured latencies
+
+METHOD:: lastTime
+the most recent measurement: [outputIndex, latencyInSamples ]
+
+METHOD:: serv
+the server to use
+
+METHOD:: syn
+the synth that runs the latency test
+
+METHOD:: resp
+the OSCFunc that listens for pulse triggers
+
