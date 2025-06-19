@@ -1,6 +1,6 @@
 Spectralyzer {
 	var <nBands, <minFreq, <maxFreq, <server, <rq, <freqs;
-	var <inPx, <ampsPx, task, lastNDbs, <avgN = 5;
+	var <inPx, <ampsPx, task, <lastNDbs, <avgN = 5;
 
 	var <view, <ampsV, <dbVals, <midSl, <rangeSl, <avgSl, <dtSl;
 	var <midDb = -30, <rangeDb = 15, <dt=0.1;
